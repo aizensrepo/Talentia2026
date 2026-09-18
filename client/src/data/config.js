@@ -44,31 +44,20 @@ export const TALENTIA_CONFIG = {
     prefilledMessage: "Hi, I would like to know more about TALENTIA ’26 registration.",
   },
 
-  coordinators: [
-    {
-      id: 1,
-      label: "Coordinator 1",
-      name: "[COORDINATOR NAME]",
-      role: "[ROLE]",
-      phone: "[PHONE NUMBER]",
-      whatsapp: "[WHATSAPP NUMBER]",
-    },
-    {
-      id: 2,
-      label: "Coordinator 2",
-      name: "[COORDINATOR NAME]",
-      role: "[ROLE]",
-      phone: "[PHONE NUMBER]",
-      whatsapp: "[WHATSAPP NUMBER]",
-    },
+  // ── Head coordinators (big display) ──
+  headCoordinators: ["Shivanesh", "Sruthi Sakthi", "Vignesh", "Shifana"],
+
+  // ── Event volunteer teams (organizers) ──
+  volunteers: [
+    { eventId: "binary-quest", members: ["Deepthi", "Naveen Kumar", "Jeydarshana", "Janashree"] },
+    { eventId: "data-deductive", members: ["Nandana", "Ranjana", "Kamalika", "Prejit J Santhosh"] },
+    { eventId: "aptitude-arena", members: ["Mithra", "Asha Das", "Ridhuvarsini", "Pranav Dev"] },
+    { eventId: "flip-frenzy", members: ["Meghaa", "Mounica", "Dhruva", "Arul Ronal", "Sam"] },
+    { eventId: "meme-decode", members: ["Aruthra", "Devi Prasath", "Dhruvathara", "John Silva", "Vijayabaskaran"] },
+    { eventId: "gift-hunt", members: ["Nethra Devi", "Jayasuryaa", "Vedha", "Dharani Tharan", "Arish"] },
   ],
 
-  faculty: {
-    label: "Faculty Coordinator",
-    name: "[FACULTY NAME]",
-    role: "[FACULTY ROLE]",
-    email: "[EMAIL]",
-  },
+  photography: ["Dharaneesh N", "Jasper Kins J"],
 
   social: {
     instagram: "[INSTAGRAM_URL]",

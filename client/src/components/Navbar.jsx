@@ -37,8 +37,10 @@ export default function Navbar({ view = "home", onNavigate = () => {}, isAdmin =
       className="fixed inset-x-0 top-0 z-50 px-3 sm:px-6"
     >
       <nav
-        className={`mx-auto mt-3 flex max-w-6xl items-center justify-between rounded-2xl px-4 py-3 transition-all duration-300 ${
-          scrolled ? "glass shadow-[0_10px_40px_rgba(0,0,0,0.5)]" : "border border-white/5 bg-black/20 backdrop-blur-md"
+        className={`mx-auto mt-3 flex max-w-6xl items-center justify-between rounded-2xl border px-4 py-3 transition-all duration-300 ${
+          scrolled
+            ? "border-white/10 bg-[#0a0d13]/60 shadow-[0_10px_40px_rgba(0,0,0,0.55),0_0_28px_rgba(34,211,238,0.08)] backdrop-blur-[20px] backdrop-saturate-150"
+            : "border-white/5 bg-black/20 backdrop-blur-md"
         }`}
       >
         <button onClick={() => onNavigate("home")} className="flex items-center gap-2.5">
