@@ -62,10 +62,10 @@ export default function Hero({ onRegister = () => {} }) {
             </a>
           </motion.div>
 
-          <div className="mt-8 flex gap-6 font-mono2 text-[11px] tracking-[0.2em] text-white/40">
+          <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-mono2 text-[11px] tracking-[0.2em] text-white/40">
             <span>◆ 6 CHALLENGES</span>
             <span>◆ {cfg.schedule.date}</span>
-            <span className="hidden sm:inline">◆ {cfg.schedule.venue}</span>
+            <span>◆ {cfg.schedule.venue}</span>
           </div>
         </div>
 
