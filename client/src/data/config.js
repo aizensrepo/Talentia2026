@@ -23,9 +23,9 @@ export const TALENTIA_CONFIG = {
 
   // ── Editable placeholders: replace bracketed values when confirmed ──
   schedule: {
-    date: "[EVENT DATE]",        // e.g. "March 14, 2026"
+    date: "30.09.2026",
     time: "[EVENT TIME]",        // e.g. "9:00 AM onwards"
-    venue: "[EVENT VENUE]",      // e.g. "M.Sc. Block, Seminar Hall"
+    venue: "MSC BLOCK",
   },
 
   registration: {
