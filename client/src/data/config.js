@@ -65,7 +65,11 @@ export const TALENTIA_CONFIG = {
     email: "[EMAIL]",
   },
 
-  apiBase: "", // empty = same origin (Vite proxies /api → localhost:5000 in dev)
+  // Production (Vercel frontend + Render API): set VITE_API_BASE to the
+  // Render backend URL, e.g. https://talentia-26-api.onrender.com
+  // Dev / single-server (Render): leave empty = same origin
+  // (Vite proxies /api → localhost:5000 in dev).
+  apiBase: (import.meta.env?.VITE_API_BASE || "").replace(/\/$/, ""),
 };
 
 export const isPlaceholder = (v) =>
