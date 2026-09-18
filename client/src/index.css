@@ -5,7 +5,15 @@
   --panel: rgba(255, 255, 255, 0.04);
 }
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  background-color: #060709; /* root canvas: kills white flash on mobile scroll/overscroll */
+  overscroll-behavior-y: none;
+}
+
+html, body {
+  color-scheme: dark;
+}
 
 body {
   background:
