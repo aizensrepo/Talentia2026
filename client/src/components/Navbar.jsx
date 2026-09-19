@@ -98,7 +98,7 @@ export default function Navbar({ view = "home", onNavigate = () => {}, isAdmin =
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
-            className="glass mx-auto mt-2 max-w-6xl rounded-2xl p-3 md:hidden"
+            className="mx-auto mt-2 max-w-6xl rounded-2xl border border-white/10 bg-[#0a0d13]/95 p-3 shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur-[12px] backdrop-saturate-150 md:hidden"
           >
             {HOME_LINKS.map((l) => (
               <a key={l.label} href={l.href} onClick={goHome(l.href)}
