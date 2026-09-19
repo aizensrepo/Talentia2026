@@ -39,7 +39,7 @@ export default function AdminDashboard({ token, onLogout, onBack }) {
 
   const logout = async () => {
     await adminLogout(token, TALENTIA_CONFIG.apiBase);
-    sessionStorage.removeItem("talentia_admin_token");
+    localStorage.removeItem("talentia_admin_token");
     onLogout();
   };
 

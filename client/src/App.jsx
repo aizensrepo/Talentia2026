@@ -18,8 +18,8 @@ import Contact from "./sections/Contact.jsx";
 export default function App() {
   const [view, setView] = useState("home");
   const [presetEvents, setPresetEvents] = useState([]);
-  const [adminToken, setAdminToken] = useState(() => sessionStorage.getItem("talentia_admin_token") || "");
-  const [studentToken, setStudentToken] = useState(() => sessionStorage.getItem("talentia_student_token") || "");
+  const [adminToken, setAdminToken] = useState(() => localStorage.getItem("talentia_admin_token") || "");
+  const [studentToken, setStudentToken] = useState(() => localStorage.getItem("talentia_student_token") || "");
 
   // Event cards dispatch this to jump into the student area with a preselected event.
   useEffect(() => {

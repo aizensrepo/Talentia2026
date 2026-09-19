@@ -80,7 +80,7 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
 
   const logout = async () => {
     await studentLogout(token, TALENTIA_CONFIG.apiBase);
-    sessionStorage.removeItem("talentia_student_token");
+    localStorage.removeItem("talentia_student_token");
     onLogout();
   };
 

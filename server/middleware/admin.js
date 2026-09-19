@@ -1,30 +1,24 @@
 const crypto = require("crypto");
 const config = require("../config");
+const tokens = require("./tokens");
 
-// Token sessions for the admin dashboard (in-memory, 12h expiry).
-// For multi-instance production, swap with Redis/JWT.
-const sessions = new Map();
+// Admin sessions: stateless signed tokens, 12h expiry.
+// Survives server restarts/redeploys (expiry lives inside the token).
 const TTL_MS = 12 * 60 * 60 * 1000;
 
 function issueSession() {
-  const token = crypto.randomBytes(32).toString("hex");
-  sessions.set(token, Date.now() + TTL_MS);
-  return token;
+  return tokens.issue({ adm: 1 }, TTL_MS);
 }
 
 function verifyToken(token) {
   if (!token) return false;
-  const exp = sessions.get(token);
-  if (!exp) return false;
-  if (exp < Date.now()) {
-    sessions.delete(token);
-    return false;
-  }
-  return true;
+  // legacy shared key still accepted where requireAdmin allows it
+  const payload = tokens.verify(token);
+  return !!(payload && payload.adm === 1);
 }
 
 function revokeToken(token) {
-  sessions.delete(token);
+  tokens.revoke(token);
 }
 
 // Accepts `Authorization: Bearer <token>` (dashboard login)

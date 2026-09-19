@@ -1,28 +1,20 @@
-const crypto = require("crypto");
+const tokens = require("./tokens");
 
-// Student sessions (in-memory, 7-day expiry). Separate from admin sessions.
-const sessions = new Map(); // token -> { studentId, exp }
+// Student sessions: stateless signed tokens, 7-day expiry.
+// Survives server restarts/redeploys (expiry lives inside the token).
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function issueStudentSession(studentId) {
-  const token = "st_" + crypto.randomBytes(32).toString("hex");
-  sessions.set(token, { studentId, exp: Date.now() + TTL_MS });
-  return token;
+  return tokens.issue({ sub: studentId }, TTL_MS);
 }
 
 function getStudentId(token) {
-  if (!token) return null;
-  const s = sessions.get(token);
-  if (!s) return null;
-  if (s.exp < Date.now()) {
-    sessions.delete(token);
-    return null;
-  }
-  return s.studentId;
+  const payload = tokens.verify(token);
+  return payload && typeof payload.sub === "string" ? payload.sub : null;
 }
 
 function revokeStudentSession(token) {
-  sessions.delete(token);
+  tokens.revoke(token);
 }
 
 function requireStudent(req, res, next) {

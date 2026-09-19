@@ -16,7 +16,7 @@ export default function AdminLogin({ onBack, onSuccess }) {
     setError("");
     try {
       const data = await adminLogin(username.trim(), password, TALENTIA_CONFIG.apiBase);
-      sessionStorage.setItem("talentia_admin_token", data.token);
+      localStorage.setItem("talentia_admin_token", data.token);
       onSuccess(data.token);
     } catch (err) {
       setError(friendlyMessage(err));

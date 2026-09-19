@@ -20,7 +20,7 @@ export default function StudentLogin({ onBack, onSuccess, presetEvents = [] }) {
   const [busy, setBusy] = useState(false);
 
   const done = (data) => {
-    sessionStorage.setItem("talentia_student_token", data.token);
+    localStorage.setItem("talentia_student_token", data.token);
     onSuccess(data.token, presetEvents);
   };
 
