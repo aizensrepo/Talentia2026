@@ -36,16 +36,21 @@ export default function Navbar({ view = "home", onNavigate = () => {}, isAdmin =
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       className="fixed inset-x-0 top-0 z-50 px-3 sm:px-6"
     >
-      <div className="mx-auto mt-2 flex max-w-6xl items-center justify-center gap-2 text-center">
+      <div className="mx-auto mt-2 flex max-w-6xl items-center justify-center gap-3 text-center">
         <img
           src="/cit-logo.png"
           alt="Coimbatore Institute of Technology logo"
-          className="h-7 w-7 shrink-0 rounded-full bg-white object-cover sm:h-8 sm:w-8"
+          className="h-10 w-10 shrink-0 rounded-full bg-white object-cover sm:h-12 sm:w-12"
           onError={(e) => { e.currentTarget.style.display = "none"; }}
         />
-        <p className="font-display text-[10px] font-bold tracking-[0.18em] text-white/70 sm:text-xs">
-          COIMBATORE INSTITUTE OF TECHNOLOGY
-        </p>
+        <div>
+          <p className="font-display text-xs font-bold tracking-[0.18em] text-white/85 sm:text-sm">
+            COIMBATORE INSTITUTE OF TECHNOLOGY
+          </p>
+          <p className="font-mono2 mt-0.5 text-[10px] tracking-[0.3em] text-cyan-300/90 sm:text-[11px]">
+            DEPARTMENT OF DCS
+          </p>
+        </div>
       </div>
       <nav
         className={`mx-auto mt-3 flex max-w-6xl items-center justify-between rounded-2xl border px-4 py-3 transition-all duration-300 ${
