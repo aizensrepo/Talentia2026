@@ -6,7 +6,7 @@ import HeroObject from "../three/HeroObject.jsx";
 export default function Hero({ onRegister = () => {} }) {
   const cfg = TALENTIA_CONFIG;
   return (
-    <section id="home" className="relative overflow-hidden pb-10 pt-40 sm:pt-44">
+    <section id="home" className="relative overflow-hidden pb-10 pt-48 sm:pt-52">
       <GiantWord />
       <div className="relative mx-auto grid max-w-6xl items-center gap-8 px-5 lg:grid-cols-2">
         <div>

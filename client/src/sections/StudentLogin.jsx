@@ -70,7 +70,7 @@ export default function StudentLogin({ onBack, onSuccess, presetEvents = [] }) {
   const err = (k) => errors[k] && <span className="mt-1 block text-xs text-red-300">{errors[k]}</span>;
 
   return (
-    <section className="relative overflow-hidden pb-24 pt-36">
+    <section className="relative overflow-hidden pb-24 pt-40">
       <GiantWord word="LOGIN" />
       <div className="relative mx-auto max-w-md px-5">
         <button onClick={onBack} className="font-mono2 mb-6 text-xs tracking-[0.2em] text-white/50 hover:text-white">← BACK</button>

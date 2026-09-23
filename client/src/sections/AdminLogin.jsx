@@ -26,7 +26,7 @@ export default function AdminLogin({ onBack, onSuccess }) {
   };
 
   return (
-    <section className="relative overflow-hidden pb-24 pt-36">
+    <section className="relative overflow-hidden pb-24 pt-40">
       <GiantWord word="ADMIN" />
       <div className="relative mx-auto max-w-md px-5">
         <button onClick={onBack} className="font-mono2 mb-6 text-xs tracking-[0.2em] text-white/50 hover:text-white">← BACK</button>

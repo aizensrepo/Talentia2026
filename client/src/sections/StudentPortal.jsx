@@ -177,14 +177,14 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
 
   if (loading) {
     return (
-      <section className="relative pb-24 pt-36">
+      <section className="relative pb-24 pt-40">
         <div className="mx-auto max-w-3xl px-5"><div className="glass animate-pulse rounded-3xl p-10 text-center text-white/50">Loading your profile…</div></div>
       </section>
     );
   }
   if (loadError) {
     return (
-      <section className="relative pb-24 pt-36">
+      <section className="relative pb-24 pt-40">
         <div className="mx-auto max-w-md px-5 text-center">
           <p className="text-red-200">{loadError}</p>
           <button onClick={load} className="btn-magnetic mt-4 rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-black">RETRY</button>
@@ -194,7 +194,7 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
   }
 
   return (
-    <section className="relative overflow-hidden pb-24 pt-36">
+    <section className="relative overflow-hidden pb-24 pt-40">
       <GiantWord word="YOU" />
       <div className="relative mx-auto max-w-3xl px-5">
         <div className="flex items-center justify-between">

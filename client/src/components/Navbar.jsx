@@ -40,14 +40,14 @@ export default function Navbar({ view = "home", onNavigate = () => {}, isAdmin =
         <img
           src="/cit-logo.png"
           alt="Coimbatore Institute of Technology logo"
-          className="h-10 w-10 shrink-0 rounded-full bg-white object-cover sm:h-12 sm:w-12"
+          className="h-14 w-14 shrink-0 rounded-full bg-white object-cover sm:h-16 sm:w-16"
           onError={(e) => { e.currentTarget.style.display = "none"; }}
         />
         <div>
-          <p className="font-display text-xs font-bold tracking-[0.18em] text-white/85 sm:text-sm">
+          <p className="font-display text-sm font-bold tracking-[0.18em] text-white/85 sm:text-base">
             COIMBATORE INSTITUTE OF TECHNOLOGY
           </p>
-          <p className="font-mono2 mt-0.5 text-[10px] tracking-[0.3em] text-cyan-300/90 sm:text-[11px]">
+          <p className="font-mono2 mt-0.5 text-[11px] tracking-[0.3em] text-cyan-300/90 sm:text-xs">
             DEPARTMENT OF DCS
           </p>
         </div>
