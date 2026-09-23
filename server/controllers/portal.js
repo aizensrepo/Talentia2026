@@ -26,6 +26,7 @@ function normalizeEntries(body) {
       participationType: en.participationType || "team",
       teamName: en.teamName || "",
       members: Array.isArray(en.members) ? en.members : [],
+      setIndex: en.setIndex ?? 0,
     }));
   }
   // legacy shape: one type/team for all eventIds
@@ -68,7 +69,8 @@ function validateEntries(entries, leaderRegNo) {
       else if (seen.has(rn)) errors[`team:${en.eventId}:m${j}registerNumber`] = "Duplicate register number in team.";
       else seen.add(rn);
     });
-    norm.push({ eventId: en.eventId, participationType: en.participationType, teamName: en.teamName, memList });
+    const setIndex = [0, 1, 2].includes(Number(en.setIndex)) ? Number(en.setIndex) : 0;
+    norm.push({ eventId: en.eventId, participationType: en.participationType, teamName: en.teamName, memList, setIndex });
   });
   return { errors, norm };
 }
@@ -120,11 +122,22 @@ async function doEventRegistration(stu, body) {
     err.conflicts = teamTaken;
     throw err;
   }
+  // Set capacity: 27 teams per set — overflow goes to the next set.
+  for (const en of norm) {
+    const filled = await Store.countSetTeams(en.eventId, en.setIndex);
+    if (filled >= Store.SET_CAPACITY) {
+      const err = new Error(
+        `Set ${en.setIndex + 1} for ${en.eventId} is full (${Store.SET_CAPACITY} teams) — please choose another set.`
+      );
+      err.status = 409;
+      throw err;
+    }
+  }
   const done = [];
   for (const en of norm) {
     const created = await Store.createTeam(en.teamName, stu.id, en.memList);
-    const reg = await Store.createRegistration(en.eventId, stu.id, created.team.id, en.participationType);
-    done.push({ eventId: en.eventId, participationType: en.participationType, team: created.team, teamMembers: created.members, id: reg.id });
+    const reg = await Store.createRegistration(en.eventId, stu.id, created.team.id, en.participationType, en.setIndex);
+    done.push({ eventId: en.eventId, participationType: en.participationType, setIndex: en.setIndex, team: created.team, teamMembers: created.members, id: reg.id });
   }
   return {
     student: stu,
@@ -313,12 +326,12 @@ async function adminExport(req, res, next) {
   try {
     const { rows } = await Store.adminList({ limit: 5000, offset: 0 });
     const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const cols = ["registration_id", "event_id", "event_name", "category", "type", "team_name",
+    const cols = ["registration_id", "event_id", "event_name", "category", "type", "set", "team_name",
       "leader_name", "leader_regno", "leader_dept", "leader_phone", "leader_email", "members", "created_at"];
     const lines = [cols.join(",")];
     for (const r of rows) {
       const mem = (r.members || []).map((m) => `${m.name} (${m.register_number})`).join("; ");
-      lines.push([r.id, r.event_id, r.event_name, r.category, r.participation_type, r.team_name,
+      lines.push([r.id, r.event_id, r.event_name, r.category, r.participation_type, `Set ${(r.set_index ?? 0) + 1}`, r.team_name,
         r.student_name, r.register_number, r.department, r.phone, r.email, mem, r.created_at].map(esc).join(","));
     }
     res.setHeader("Content-Type", "text/csv");
@@ -333,9 +346,16 @@ async function publicEvents(req, res, next) {
   } catch (e) { next(e); }
 }
 
+// GET /api/availability — seats taken per set for every event.
+async function setAvailability(req, res, next) {
+  try {
+    res.json({ ok: true, capacity: Store.SET_CAPACITY, sets: Store.SET_COUNT, availability: await Store.getSetAvailability() });
+  } catch (e) { next(e); }
+}
+
 module.exports = {
   registerStudent,
   studentCreateProfile, studentLogin, studentLogout, studentMe, studentUpdateMe, studentRegisterEvents,
   studentCancelRegistration,
-  adminLogin, adminLogout, adminStats, adminRegistrations, adminExport, publicEvents,
+  adminLogin, adminLogout, adminStats, adminRegistrations, adminExport, publicEvents, setAvailability,
 };

@@ -146,3 +146,11 @@ export async function fetchRegistrations(params = {}, apiBase = "") {
   if (!res.ok) throw new Error("Failed to load registrations");
   return res.json();
 }
+
+// Seats taken per set for every event:
+// { ok, capacity: 27, sets: 3, availability: { eventId: [n0, n1, n2] } }
+export async function fetchSetAvailability(apiBase = "") {
+  const res = await fetch(`${apiBase}/api/availability`);
+  if (!res.ok) throw new Error("Failed to load set availability");
+  return res.json();
+}

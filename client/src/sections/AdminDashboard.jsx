@@ -165,7 +165,7 @@ export default function AdminDashboard({ token, onLogout, onBack }) {
                         </td>
                         <td className="px-4 py-3">
                           <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-bold tracking-wider">{r.event_name}</span>
-                          <p className="font-mono2 mt-1 text-[10px] text-white/40">{r.category?.toUpperCase()}</p>
+                          <p className="font-mono2 mt-1 text-[10px] text-white/40">{r.category?.toUpperCase()} · SET {(r.set_index ?? 0) + 1}</p>
                         </td>
                         <td className="px-4 py-3">
                           <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${r.participation_type === "team" ? "bg-violet-400/20 text-violet-200" : "bg-cyan-300/15 text-cyan-200"}`}>

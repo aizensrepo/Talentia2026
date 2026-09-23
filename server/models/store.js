@@ -19,6 +19,11 @@ const EVENTS_FALLBACK = [
 const nid = (p) => `${p}_${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
 const upper = (s) => String(s || "").trim().toUpperCase();
 
+// Each event runs in 3 sets × 1 hour; every set takes at most 27 teams.
+const SET_CAPACITY = 27;
+const SET_COUNT = 3;
+const clampSet = (s) => Math.min(Math.max(Number(s) || 0, 0), SET_COUNT - 1);
+
 // ── local JSON helpers ──
 function readStore() {
   try {
@@ -187,16 +192,17 @@ async function createTeam(name, leaderId, members) {
 }
 
 // ── registrations ──
-async function createRegistration(eventId, studentId, teamId, type) {
+async function createRegistration(eventId, studentId, teamId, type, setIndex = 0) {
+  const set = clampSet(setIndex);
   const row = {
     id: nid("er"), event_id: eventId, student_id: studentId, team_id: teamId || null,
-    participation_type: type, created_at: new Date().toISOString(),
+    participation_type: type, set_index: set, created_at: new Date().toISOString(),
   };
   if (hasPg()) {
     try {
       await query(
-        "INSERT INTO event_registrations (id,event_id,student_id,team_id,participation_type,created_at) VALUES ($1,$2,$3,$4,$5,$6)",
-        [row.id, row.event_id, row.student_id, row.team_id, row.participation_type, row.created_at]
+        "INSERT INTO event_registrations (id,event_id,student_id,team_id,participation_type,set_index,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)",
+        [row.id, row.event_id, row.student_id, row.team_id, row.participation_type, row.set_index, row.created_at]
       );
     } catch (e) {
       if (e.code === "23505") {
@@ -221,6 +227,38 @@ async function createRegistration(eventId, studentId, teamId, type) {
   d.registrations.push(row);
   writeStore(d);
   return row;
+}
+
+// Teams already placed in an event's set (for the 27-per-set cap).
+async function countSetTeams(eventId, setIndex) {
+  const set = clampSet(setIndex);
+  if (hasPg()) {
+    const { rows } = await query(
+      "SELECT COUNT(*)::int AS c FROM event_registrations WHERE event_id = $1 AND COALESCE(set_index, 0) = $2",
+      [eventId, set]
+    );
+    return rows[0] ? rows[0].c : 0;
+  }
+  return readStore().registrations.filter((r) => r.event_id === eventId && clampSet(r.set_index) === set).length;
+}
+
+// Seats taken per set for every event: { eventId: [n0, n1, n2] }.
+async function getSetAvailability() {
+  const out = {};
+  for (const e of EVENTS_FALLBACK) out[e.id] = [0, 0, 0];
+  if (hasPg()) {
+    const { rows } = await query(
+      "SELECT event_id, COALESCE(set_index, 0) AS s, COUNT(*)::int AS c FROM event_registrations GROUP BY event_id, s"
+    );
+    for (const r of rows) {
+      if (out[r.event_id]) out[r.event_id][clampSet(r.s)] += r.c;
+    }
+  } else {
+    for (const r of readStore().registrations) {
+      if (out[r.event_id]) out[r.event_id][clampSet(r.set_index)] += 1;
+    }
+  }
+  return out;
 }
 
 // Cancel a student's own entry (leader only). Cleans up the team if unused.
@@ -295,6 +333,7 @@ async function registrationsForStudent(student) {
   if (hasPg()) {
     const { rows } = await query(
       `SELECT er.event_id, e.name AS event_name, e.category, er.participation_type, er.created_at,
+              COALESCE(er.set_index, 0) AS set_index,
               t.name AS team_name,
               (SELECT COUNT(*)::int FROM team_members tm WHERE tm.team_id = er.team_id) AS member_count
        FROM event_registrations er
@@ -315,7 +354,7 @@ async function registrationsForStudent(student) {
     .map((r) => ({
       event_id: r.event_id, event_name: (evMap[r.event_id] || {}).name || r.event_id,
       category: (evMap[r.event_id] || {}).category || "", participation_type: r.participation_type,
-      created_at: r.created_at,
+      created_at: r.created_at, set_index: clampSet(r.set_index),
       team_name: r.team_id ? (d.teams.find((t) => t.id === r.team_id) || {}).name || "" : "",
       member_count: r.team_id ? d.members.filter((m) => m.team_id === r.team_id).length : 0,
     }));
@@ -335,6 +374,7 @@ async function adminList({ event = "", search = "", limit = 200, offset = 0 }) {
     params.push(limit, offset);
     const { rows } = await query(
       `SELECT er.id, er.event_id, e.name AS event_name, e.category, er.participation_type,
+              COALESCE(er.set_index, 0) AS set_index,
               er.team_id, t.name AS team_name, er.created_at,
               s.id AS student_id, s.name AS student_name, s.register_number, s.department, s.year, s.phone, s.email
        FROM event_registrations er
@@ -371,6 +411,7 @@ async function adminList({ event = "", search = "", limit = 200, offset = 0 }) {
     return {
       id: r.id, event_id: r.event_id, event_name: (evMap[r.event_id] || {}).name || r.event_id,
       category: (evMap[r.event_id] || {}).category || "", participation_type: r.participation_type,
+      set_index: clampSet(r.set_index),
       team_id: r.team_id, team_name: t ? t.name : "",
       student_name: s.name, register_number: s.register_number, department: s.department,
       year: s.year, phone: s.phone, email: s.email, created_at: r.created_at,
@@ -408,7 +449,7 @@ async function adminStats() {
 }
 
 module.exports = {
-  EVENTS_FALLBACK, getEvents, findOrCreateStudent, findStudentByRegNo, getStudentById,
-  updateStudentContact, findConflict, teamsContaining, registrationsForStudent,
+  EVENTS_FALLBACK, SET_CAPACITY, SET_COUNT, getEvents, findOrCreateStudent, findStudentByRegNo, getStudentById,
+  updateStudentContact, findConflict, teamsContaining, countSetTeams, getSetAvailability, registrationsForStudent,
   createTeam, createRegistration, deleteStudentRegistration, adminList, adminStats,
 };

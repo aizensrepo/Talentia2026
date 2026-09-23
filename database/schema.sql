@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS event_registrations (
   student_id         TEXT NOT NULL REFERENCES students(id),
   team_id            TEXT REFERENCES teams(id) ON DELETE CASCADE,
   participation_type TEXT NOT NULL CHECK (participation_type IN ('individual', 'team')),
+  set_index          INT NOT NULL DEFAULT 0,
   created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -119,3 +120,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_reg_team
 CREATE INDEX IF NOT EXISTS idx_ereg_event ON event_registrations (event_id);
 CREATE INDEX IF NOT EXISTS idx_ereg_student ON event_registrations (student_id);
 CREATE INDEX IF NOT EXISTS idx_ereg_created ON event_registrations (created_at DESC);
+
+-- V2.2: per-event sets (3 × 1 hour, 27 teams each) — safe on existing DBs
+ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS set_index INT NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_ereg_set ON event_registrations (event_id, set_index);

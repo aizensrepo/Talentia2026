@@ -2,7 +2,7 @@ const express = require("express");
 const { createRegistration, listRegistrations, registrationStats, createQuery } = require("../controllers/registrations");
 const {
   registerStudent, adminLogin, adminLogout, adminStats,
-  adminRegistrations, adminExport, publicEvents,
+  adminRegistrations, adminExport, publicEvents, setAvailability,
   studentCreateProfile, studentLogin, studentLogout, studentMe, studentUpdateMe, studentRegisterEvents,
   studentCancelRegistration,
 } = require("../controllers/portal");
@@ -16,6 +16,7 @@ router.post("/queries", createQuery);
 
 // ── V2: student portal + secure admin ──
 router.get("/events", publicEvents);
+router.get("/availability", setAvailability);
 router.post("/register", registerStudent);
 
 // Student self-service (profile → login → details/events page)

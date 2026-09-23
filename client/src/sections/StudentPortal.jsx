@@ -4,10 +4,10 @@ import Reveal from "../components/Reveal.jsx";
 import GiantWord from "../components/GiantWord.jsx";
 import { EVENTS } from "../data/events.js";
 import { TALENTIA_CONFIG } from "../data/config.js";
-import { studentMe, studentUpdateMe, studentRegisterEvents, studentCancelRegistration, studentLogout } from "../utils/api.js";
+import { studentMe, studentUpdateMe, studentRegisterEvents, studentCancelRegistration, studentLogout, fetchSetAvailability } from "../utils/api.js";
 
 const emptyMember = () => ({ name: "", registerNumber: "", department: "", phone: "", email: "" });
-const blankEntry = () => ({ mode: "team", teamName: "", members: [emptyMember()] });
+const blankEntry = () => ({ mode: "team", teamName: "", members: [emptyMember()], setIndex: 0 });
 
 /**
  * Logged-in student page: profile details + per-event team entry.
@@ -27,6 +27,7 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
 
   const [eventIds, setEventIds] = useState(presetEvents);
   const [perEvent, setPerEvent] = useState({});
+  const [availability, setAvailability] = useState(null); // { counts: {eventId:[n0,n1,n2]}, capacity }
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("idle");
   const [serverError, setServerError] = useState("");
@@ -63,6 +64,13 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
       const data = await studentMe(token, TALENTIA_CONFIG.apiBase);
       setMe(data.student);
       setJoined(data.joined || []);
+      try {
+        const av = await fetchSetAvailability(TALENTIA_CONFIG.apiBase);
+        setAvailability({ counts: av.availability || {}, capacity: av.capacity || 27 });
+      } catch {
+        setAvailability(null); // offline fallback: server still enforces caps
+      }
+      setJoined(data.joined || []);
       setContact({
         department: data.student.department || "",
         year: data.student.year || "First Year",
@@ -78,6 +86,27 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
   };
 
   useEffect(() => { load(); }, []); // eslint-disable-line
+
+  // If a picked set filled up, move the entry to the first set with seats.
+  useEffect(() => {
+    if (!availability) return;
+    setPerEvent((p) => {
+      const next = { ...p };
+      let changed = false;
+      for (const id of Object.keys(next)) {
+        const counts = availability.counts[id] || [0, 0, 0];
+        const cur = next[id].setIndex ?? 0;
+        if ((counts[cur] ?? 0) >= availability.capacity) {
+          const alt = [0, 1, 2].find((i) => (counts[i] ?? 0) < availability.capacity);
+          if (alt !== undefined && alt !== cur) {
+            next[id] = { ...next[id], setIndex: alt };
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : p;
+    });
+  }, [availability]);
 
   const logout = async () => {
     await studentLogout(token, TALENTIA_CONFIG.apiBase);
@@ -153,7 +182,7 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
         {
           entries: freshIds.map((id) => {
             const en = entryOf(id);
-            return { eventId: id, participationType: "team", teamName: en.teamName, members: en.members };
+            return { eventId: id, participationType: "team", teamName: en.teamName, members: en.members, setIndex: en.setIndex ?? 0 };
           }),
         },
         TALENTIA_CONFIG.apiBase);
@@ -272,7 +301,7 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
                   <p className="text-sm font-bold text-emerald-100">
                     ✓ {j.event_name}
                     <span className="font-mono2 ml-2 text-[11px] font-normal text-emerald-200/70">
-                      {`TEAM${j.team_name ? ` · ${j.team_name}` : ""}${j.member_count ? ` (${1 + j.member_count})` : ""}`}
+                      {`TEAM${j.team_name ? ` · ${j.team_name}` : ""}${j.member_count ? ` (${1 + j.member_count})` : ""}${j.set_index !== undefined && j.set_index !== null ? ` · SET ${(j.set_index ?? 0) + 1}` : ""}`}
                     </span>
                   </p>
                   {confirmRemove === j.event_id ? (
@@ -340,6 +369,29 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
                     <span className="rounded-xl bg-white px-4 py-2 text-xs font-extrabold tracking-widest text-black">
                       👥 TEAM
                     </span>
+                  </div>
+
+                  <div className="mt-3">
+                    <p className="font-mono2 text-[10px] tracking-[0.2em] text-white/45">PICK A SET · 1 HOUR EACH · MAX {availability?.capacity ?? 27} TEAMS</p>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      {(EVENTS.find((x) => x.id === id)?.sets || []).map((label, i) => {
+                        const filled = availability?.counts?.[id]?.[i] ?? 0;
+                        const cap = availability?.capacity ?? 27;
+                        const full = filled >= cap;
+                        const active = (en.setIndex ?? 0) === i;
+                        const [setName, setTime] = String(label).split("·").map((s) => s.trim());
+                        return (
+                          <button key={i} type="button" disabled={full} onClick={() => setEntry(id, { setIndex: i })}
+                            className={`rounded-xl border px-2 py-2 text-center transition ${active ? "border-cyan-300 bg-cyan-300/15" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"} ${full ? "cursor-not-allowed opacity-40" : ""}`}>
+                            <span className="block text-[11px] font-extrabold tracking-widest text-white">{(setName || `SET ${i + 1}`).toUpperCase()}</span>
+                            <span className="font-mono2 mt-0.5 block text-[10px] text-cyan-200/80">{setTime || ""}</span>
+                            <span className={`font-mono2 mt-0.5 block text-[10px] font-bold ${full ? "text-red-300" : "text-emerald-300"}`}>
+                              {full ? "FULL" : `${cap - filled} LEFT`}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">

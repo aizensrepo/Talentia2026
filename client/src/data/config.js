@@ -45,7 +45,7 @@ export const TALENTIA_CONFIG = {
   },
 
   // ── Head coordinators (big display) ──
-  headCoordinators: ["Shivanesh", "Sruthi Sakthi", "Vignesh", "Shifana"],
+  headCoordinators: ["Shivanesh", "Sruthi Sakthi", "Vignesh"],
 
   // ── Event volunteer teams (organizers) ──
   volunteers: [
