@@ -119,6 +119,47 @@ async function findConflict(eventId, regNos) {
   return null;
 }
 
+// ── cross-team exclusivity: teams (with full rosters) containing any of these
+// register numbers — used to enforce "one person, one team".
+// Roster = leader register no. + member register nos. (uppercased).
+async function teamsContaining(regNos) {
+  const list = [...new Set(regNos.map(upper))].filter(Boolean);
+  if (!list.length) return [];
+  if (hasPg()) {
+    const t = await query(
+      `SELECT DISTINCT t.id, t.name FROM teams t
+       LEFT JOIN students s ON s.id = t.leader_student_id
+       LEFT JOIN team_members tm ON tm.team_id = t.id
+       WHERE s.register_number = ANY($1) OR tm.register_number = ANY($1)`,
+      [list]
+    );
+    const out = [];
+    for (const row of t.rows) {
+      const lead = await query(
+        "SELECT s.register_number FROM students s JOIN teams t ON t.leader_student_id = s.id WHERE t.id = $1",
+        [row.id]
+      );
+      const mem = await query("SELECT register_number FROM team_members WHERE team_id = $1", [row.id]);
+      const roster = new Set(
+        [upper(lead.rows[0] && lead.rows[0].register_number), ...mem.rows.map((r) => upper(r.register_number))].filter(Boolean)
+      );
+      out.push({ id: row.id, name: row.name, roster });
+    }
+    return out;
+  }
+  const d = readStore();
+  const out = [];
+  for (const t of d.teams) {
+    const leader = d.students.find((s) => s.id === t.leader_student_id);
+    const mems = d.members.filter((m) => m.team_id === t.id);
+    const roster = new Set(
+      [upper(leader && leader.register_number), ...mems.map((m) => upper(m.register_number))].filter(Boolean)
+    );
+    if ([...roster].some((r) => list.includes(r))) out.push({ id: t.id, name: t.name, roster });
+  }
+  return out;
+}
+
 // ── teams ──
 async function createTeam(name, leaderId, members) {
   const team = { id: nid("team"), name: (name || "").trim(), leader_student_id: leaderId, created_at: new Date().toISOString() };
@@ -368,6 +409,6 @@ async function adminStats() {
 
 module.exports = {
   EVENTS_FALLBACK, getEvents, findOrCreateStudent, findStudentByRegNo, getStudentById,
-  updateStudentContact, findConflict, registrationsForStudent,
+  updateStudentContact, findConflict, teamsContaining, registrationsForStudent,
   createTeam, createRegistration, deleteStudentRegistration, adminList, adminStats,
 };

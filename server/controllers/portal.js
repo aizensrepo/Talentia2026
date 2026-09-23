@@ -17,19 +17,19 @@ function vStudent(s) {
   return e;
 }
 
-// Per-event entries: [{ eventId, participationType, teamName, members }]
-// Each event is applied for individually or with its own team (size 1–3).
+// Per-event entries: [{ eventId, participationType: "team", teamName, members }]
+// Teams only — every entry needs its own team of 2–3 (you + 1–2 members).
 function normalizeEntries(body) {
   if (Array.isArray(body.entries)) {
     return body.entries.map((en) => ({
       eventId: String(en.eventId || ""),
-      participationType: en.participationType || "individual",
+      participationType: en.participationType || "team",
       teamName: en.teamName || "",
       members: Array.isArray(en.members) ? en.members : [],
     }));
   }
   // legacy shape: one type/team for all eventIds
-  const { participationType = "individual", teamName = "", members = [], eventIds = [] } = body || {};
+  const { participationType = "team", teamName = "", members = [], eventIds = [] } = body || {};
   return [...new Set((eventIds || []).map(String))].filter(Boolean).map((eventId) => ({
     eventId, participationType, teamName, members: Array.isArray(members) ? members : [],
   }));
@@ -53,22 +53,21 @@ function validateEntries(entries, leaderRegNo) {
       return;
     }
     seenEvents.add(en.eventId);
-    if (!["individual", "team"].includes(en.participationType)) {
-      errors[`team:${en.eventId}:mode`] = "Choose individual or team.";
+    if (en.participationType !== "team") {
+      errors[`team:${en.eventId}:mode`] = "Solo registration is disabled — register as a team of 2–3.";
       return;
     }
     const memList = en.members;
-    if (en.participationType === "team") {
-      if (memList.length > 2) errors[`team:${en.eventId}:members`] = "Team size is maximum 3 (you + up to 2 members).";
-      const seen = new Set([String(leaderRegNo || "").trim().toUpperCase()]);
-      memList.forEach((m, j) => {
-        if (!m || String(m.name || "").trim().length < 2) errors[`team:${en.eventId}:m${j}name`] = "Member name is required.";
-        const rn = String(m?.registerNumber || "").trim().toUpperCase();
-        if (!rn) errors[`team:${en.eventId}:m${j}registerNumber`] = "Member register number is required.";
-        else if (seen.has(rn)) errors[`team:${en.eventId}:m${j}registerNumber`] = "Duplicate register number in team.";
-        else seen.add(rn);
-      });
-    }
+    if (memList.length < 1) errors[`team:${en.eventId}:members`] = "Add at least 1 member — a team needs 2–3 players including you.";
+    if (memList.length > 2) errors[`team:${en.eventId}:members`] = "Team size is maximum 3 (you + up to 2 members).";
+    const seen = new Set([String(leaderRegNo || "").trim().toUpperCase()]);
+    memList.forEach((m, j) => {
+      if (!m || String(m.name || "").trim().length < 2) errors[`team:${en.eventId}:m${j}name`] = "Member name is required.";
+      const rn = String(m?.registerNumber || "").trim().toUpperCase();
+      if (!rn) errors[`team:${en.eventId}:m${j}registerNumber`] = "Member register number is required.";
+      else if (seen.has(rn)) errors[`team:${en.eventId}:m${j}registerNumber`] = "Duplicate register number in team.";
+      else seen.add(rn);
+    });
     norm.push({ eventId: en.eventId, participationType: en.participationType, teamName: en.teamName, memList });
   });
   return { errors, norm };
@@ -88,9 +87,7 @@ async function doEventRegistration(stu, body) {
   // All-or-nothing duplicate check across every entry.
   const conflicts = [];
   for (const en of norm) {
-    const regNos = en.participationType === "team"
-      ? [leaderReg, ...en.memList.map((m) => String(m.registerNumber).trim().toUpperCase())]
-      : [leaderReg];
+    const regNos = [leaderReg, ...en.memList.map((m) => String(m.registerNumber).trim().toUpperCase())];
     const hit = await Store.findConflict(en.eventId, regNos);
     if (hit) conflicts.push({ event: en.eventId, registerNumber: hit });
   }
@@ -102,17 +99,32 @@ async function doEventRegistration(stu, body) {
     err.conflicts = conflicts;
     throw err;
   }
+  // One person, one team: nobody in the new team (leader included) may belong
+  // to a DIFFERENT team. The identical team may re-register for other events.
+  const teamTaken = [];
+  for (const en of norm) {
+    const regNos = [...new Set([leaderReg, ...en.memList.map((m) => String(m.registerNumber).trim().toUpperCase())])];
+    const key = [...regNos].sort().join("|");
+    const hits = await Store.teamsContaining(regNos);
+    const clash = hits.find((t) => [...t.roster].sort().join("|") !== key);
+    if (clash) {
+      const overlap = [...clash.roster].find((r) => regNos.includes(r)) || regNos[0];
+      teamTaken.push({ event: en.eventId, registerNumber: overlap, team: clash.name });
+    }
+  }
+  if (teamTaken.length) {
+    const err = new Error(
+      `Already in another team: ${teamTaken.map((c) => `${c.registerNumber}${c.team ? ` (team "${c.team}")` : ""}`).join("; ")}. One person can only be in one team — remove that entry first to form a new team.`
+    );
+    err.status = 409;
+    err.conflicts = teamTaken;
+    throw err;
+  }
   const done = [];
   for (const en of norm) {
-    let team = null;
-    let teamMembers = [];
-    if (en.participationType === "team") {
-      const created = await Store.createTeam(en.teamName, stu.id, en.memList);
-      team = created.team;
-      teamMembers = created.members;
-    }
-    const reg = await Store.createRegistration(en.eventId, stu.id, team ? team.id : null, en.participationType);
-    done.push({ eventId: en.eventId, participationType: en.participationType, team, teamMembers, id: reg.id });
+    const created = await Store.createTeam(en.teamName, stu.id, en.memList);
+    const reg = await Store.createRegistration(en.eventId, stu.id, created.team.id, en.participationType);
+    done.push({ eventId: en.eventId, participationType: en.participationType, team: created.team, teamMembers: created.members, id: reg.id });
   }
   return {
     student: stu,
@@ -244,8 +256,8 @@ async function studentRegisterEvents(req, res, next) {
 }
 
 // DELETE /api/student/registrations/:eventId — student removes their own entry.
-// Only the leader (owner) can cancel; team rows + orphan team are cleaned up.
-// To switch solo↔team, remove the entry and re-add it with the other type.
+// Only the leader (owner) can cancel; team rows + orphan team are cleaned up,
+// which also frees every member to join a different team afterwards.
 async function studentCancelRegistration(req, res, next) {
   try {
     const { eventId } = req.params;

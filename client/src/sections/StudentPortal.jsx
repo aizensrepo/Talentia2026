@@ -7,12 +7,13 @@ import { TALENTIA_CONFIG } from "../data/config.js";
 import { studentMe, studentUpdateMe, studentRegisterEvents, studentCancelRegistration, studentLogout } from "../utils/api.js";
 
 const emptyMember = () => ({ name: "", registerNumber: "", department: "", phone: "", email: "" });
-const blankEntry = () => ({ mode: "individual", teamName: "", members: [] });
+const blankEntry = () => ({ mode: "team", teamName: "", members: [emptyMember()] });
 
 /**
- * Logged-in student page: profile details + per-event entry.
- * EVERY event gets its own choice: apply INDIVIDUALLY or AS A TEAM
- * (each team: you + up to 2 members, size 1–3).
+ * Logged-in student page: profile details + per-event team entry.
+ * Teams only: EVERY event needs its own team (you + 1–2 members, size 2–3).
+ * One person, one team — nobody (leader included) may join a second,
+ * different team. Removing an entry frees its members to re-team.
  */
 export default function StudentPortal({ token, presetEvents = [], onLogout, onBack }) {
   const [me, setMe] = useState(null);
@@ -109,10 +110,10 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
   };
 
   const copyTeamFrom = (toId) => {
-    const srcId = freshIds.find((id) => id !== toId && entryOf(id).mode === "team" && (entryOf(id).teamName || entryOf(id).members.length));
+    const srcId = freshIds.find((id) => id !== toId && (entryOf(id).teamName || entryOf(id).members.length));
     if (!srcId) return;
     const src = entryOf(srcId);
-    setEntry(toId, { mode: "team", teamName: src.teamName, members: src.members.map((m) => ({ ...m })) });
+    setEntry(toId, { teamName: src.teamName, members: src.members.map((m) => ({ ...m })) });
   };
 
   const saveContact = async () => {
@@ -133,16 +134,15 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
     if (!freshIds.length) er.eventIds = joined.length ? "You have already joined every selected event." : "Select at least one event.";
     freshIds.forEach((id) => {
       const en = entryOf(id);
-      if (en.mode === "team") {
-        const seen = new Set([String(me.register_number).toUpperCase()]);
-        en.members.forEach((m, j) => {
-          if (m.name.trim().length < 2) er[`team:${id}:m${j}name`] = "Required.";
-          const rn = m.registerNumber.trim().toUpperCase();
-          if (!rn) er[`team:${id}:m${j}registerNumber`] = "Required.";
-          else if (seen.has(rn)) er[`team:${id}:m${j}registerNumber`] = "Duplicate in team.";
-          else seen.add(rn);
-        });
-      }
+      if (!en.members.length) er[`team:${id}:members`] = "Add at least 1 member (team of 2–3).";
+      const seen = new Set([String(me.register_number).toUpperCase()]);
+      en.members.forEach((m, j) => {
+        if (m.name.trim().length < 2) er[`team:${id}:m${j}name`] = "Required.";
+        const rn = m.registerNumber.trim().toUpperCase();
+        if (!rn) er[`team:${id}:m${j}registerNumber`] = "Required.";
+        else if (seen.has(rn)) er[`team:${id}:m${j}registerNumber`] = "Duplicate in team.";
+        else seen.add(rn);
+      });
     });
     setErrors(er);
     if (Object.keys(er).length) return;
@@ -153,7 +153,7 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
         {
           entries: freshIds.map((id) => {
             const en = entryOf(id);
-            return { eventId: id, participationType: en.mode, teamName: en.teamName, members: en.mode === "team" ? en.members : [] };
+            return { eventId: id, participationType: "team", teamName: en.teamName, members: en.members };
           }),
         },
         TALENTIA_CONFIG.apiBase);
@@ -206,7 +206,7 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
           <h2 className="font-display mt-4 text-3xl font-black sm:text-4xl">
             HI, {me.name.split(" ")[0].toUpperCase()} <span className="gradient-text">👋</span>
           </h2>
-          <p className="mt-1 font-mono2 text-xs tracking-[0.2em] text-white/45">{me.register_number} • APPLY INDIVIDUALLY OR AS A TEAM</p>
+          <p className="mt-1 font-mono2 text-xs tracking-[0.2em] text-white/45">{me.register_number} • TEAM REGISTRATION ONLY · 2–3 MEMBERS</p>
         </Reveal>
 
         {status === "success" && result && (
@@ -216,7 +216,7 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
             <div className="mt-2 flex flex-wrap justify-center gap-2">
               {result.entries.map((en) => (
                 <span key={en.eventId} className="rounded-full border border-emerald-300/30 px-3 py-1 text-xs font-bold">
-                  {evName(en.eventId)} · {en.participationType === "team" ? `TEAM (${1 + (en.teamMembers || []).length})` : "SOLO"}
+                  {evName(en.eventId)} · TEAM ({1 + (en.teamMembers || []).length})
                 </span>
               ))}
             </div>
@@ -272,7 +272,7 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
                   <p className="text-sm font-bold text-emerald-100">
                     ✓ {j.event_name}
                     <span className="font-mono2 ml-2 text-[11px] font-normal text-emerald-200/70">
-                      {j.participation_type === "team" ? `TEAM${j.team_name ? ` · ${j.team_name}` : ""}${j.member_count ? ` (${1 + j.member_count})` : ""}` : "SOLO"}
+                      {`TEAM${j.team_name ? ` · ${j.team_name}` : ""}${j.member_count ? ` (${1 + j.member_count})` : ""}`}
                     </span>
                   </p>
                   {confirmRemove === j.event_id ? (
@@ -291,7 +291,7 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
               ))}
             </div>
             {removeMsg && <p className="mt-2 text-xs text-cyan-200">{removeMsg}</p>}
-            <p className="mt-2 font-mono2 text-[10px] text-white/35">TIP: TO SWITCH SOLO ↔ TEAM, REMOVE THE ENTRY AND RE-ADD IT BELOW.</p>
+            <p className="mt-2 font-mono2 text-[10px] text-white/35">TIP: REMOVE AN ENTRY TO FREE ITS MEMBERS FOR A DIFFERENT TEAM.</p>
           </div>
         )}
 
@@ -322,14 +322,14 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
           {errors.eventIds && <p className="mt-2 text-xs text-red-300">{errors.eventIds}</p>}
         </div>
 
-        {/* 3 — per-event individual/team choice */}
+        {/* 3 — per-event team */}
         {!!freshIds.length && (
           <div className="mt-4 space-y-4">
-            <h3 className="font-display text-xs font-bold tracking-[0.25em] text-white/60">3 · FOR EACH EVENT: SOLO OR TEAM?</h3>
+            <h3 className="font-display text-xs font-bold tracking-[0.25em] text-white/60">3 · BUILD YOUR TEAM FOR EACH EVENT (2–3 MEMBERS)</h3>
             {freshIds.map((id) => {
               const en = entryOf(id);
               const size = 1 + en.members.length;
-              const canCopy = freshIds.some((x) => x !== id && entryOf(x).mode === "team" && (entryOf(x).teamName || entryOf(x).members.length));
+              const canCopy = freshIds.some((x) => x !== id && (entryOf(x).teamName || entryOf(x).members.length));
               return (
                 <div key={id} className="glass rounded-3xl p-5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -337,18 +337,12 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
                       <p className="font-display text-sm font-extrabold tracking-widest">{evName(id)}</p>
                       <p className="font-mono2 text-[10px] tracking-wider text-cyan-200/80">🕘 {EVENTS.find((x) => x.id === id)?.slot?.toUpperCase()} · {EVENTS.find((x) => x.id === id)?.time}</p>
                     </div>
-                    <div className="flex gap-2">
-                      {[["individual", "🧍 SOLO"], ["team", "👥 TEAM"]].map(([v, t]) => (
-                        <button key={v} type="button" onClick={() => setEntry(id, { mode: v })}
-                          className={`rounded-xl px-4 py-2 text-xs font-extrabold tracking-widest transition ${en.mode === v ? "bg-white text-black" : "border border-white/15 bg-white/5 text-white/70 hover:text-white"}`}>
-                          {t}
-                        </button>
-                      ))}
-                    </div>
+                    <span className="rounded-xl bg-white px-4 py-2 text-xs font-extrabold tracking-widest text-black">
+                      👥 TEAM
+                    </span>
                   </div>
 
-                  {en.mode === "team" && (
-                    <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-mono2 text-[11px] tracking-[0.2em] text-white/55">THIS EVENT'S TEAM · SIZE {size}/3</p>
                         <div className="flex gap-2">
@@ -367,7 +361,9 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
                         <div key={j} className="mt-3 rounded-xl border border-white/10 p-3">
                           <div className="flex items-center justify-between">
                             <p className="text-xs font-bold tracking-widest text-white/70">MEMBER {j + 1}</p>
-                            <button type="button" onClick={() => setEntry(id, { members: en.members.filter((_, k) => k !== j) })} className="text-xs text-red-300">Remove ✕</button>
+                            {en.members.length > 1 && (
+                              <button type="button" onClick={() => setEntry(id, { members: en.members.filter((_, k) => k !== j) })} className="text-xs text-red-300">Remove ✕</button>
+                            )}
                           </div>
                           <div className="mt-2 grid gap-3 sm:grid-cols-2">
                             <label className="block"><span className="font-mono2 mb-1 block text-[10px] text-white/50">NAME *</span>
@@ -385,7 +381,6 @@ export default function StudentPortal({ token, presetEvents = [], onLogout, onBa
                       ))}
                       {errors[`team:${id}:members`] && <p className="mt-2 text-xs text-red-300">{errors[`team:${id}:members`]}</p>}
                     </div>
-                  )}
                 </div>
               );
             })}
