@@ -64,7 +64,7 @@ export default function AdminDashboard({ token, onLogout, onBack }) {
   }, [rows]);
 
   return (
-    <section className="relative overflow-hidden py-24">
+    <section className="relative overflow-hidden pb-24 pt-32">
       <GiantWord word="DATA" />
       <div className="relative mx-auto max-w-6xl px-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
